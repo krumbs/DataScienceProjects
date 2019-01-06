@@ -1,3 +1,10 @@
+"""
+Title: Exoplanet Hunting in Deep Space
+- An attempt to train a neural net to classify whether Kepler time series data contains a star with an exoplanet
+Author: S Jonkers
+Date: January 2019
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from pandas import read_csv
@@ -152,8 +159,13 @@ category_weights = {0: 1., 1: 12}
 # Fit the model
 print('y_train shape: {}'.format(y_train.shape))
 
-history = model.fit_generator(batch_generator(x_train, y_train, 32), validation_data=(x_val, y_val), callbacks=callbacks_list,
-                                                class_weight=category_weights, verbose=0, epochs=10, steps_per_epoch=x_train.shape[1] // 32)
+history = model.fit_generator(batch_generator(x_train, y_train, 32),
+                                                validation_data=(x_val, y_val),
+                                                callbacks=callbacks_list,
+                                                class_weight=category_weights,
+                                                verbose=0,
+                                                epochs=10,
+                                                steps_per_epoch=x_train.shape[1] // 32)
 
 model.load_weights("bestweights.hdf5")
 
