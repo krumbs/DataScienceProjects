@@ -35,6 +35,7 @@ def recall(y_true, y_pred):
     recall = true_positives / (possible_positives + K.epsilon())
     return recall
 
+
 def f1(y_true, y_pred):
     prec = precision(y_true, y_pred)
     recall_ = recall(y_true, y_pred)
@@ -61,12 +62,13 @@ def batch_generator(x_train_, y_train_, batch_size=32):
         y_batch[:half_batch] = y_train_[yes_idx[:half_batch]]
         y_batch[half_batch:] = y_train_[non_idx[half_batch:batch_size]]
 
+        # Augment Data
         for i in range(half_batch):
             if i % 2 == 0:
-                x_batch[i] = np.flip(x_batch[i], axis=0)
+                x_batch[i] = np.flip(x_batch[i], axis=0)            # flip data
             if i % 3 == 0:
-                for kc,ki in enumerate(x_batch[i]):
-                    x_batch[i][kc] += np.random.normal(0, 0.1)
+                for kc, ki in enumerate(x_batch[i]):
+                    x_batch[i][kc] += np.random.normal(0, 0.1)      # add noise
         yield x_batch, y_batch
 
 
@@ -219,7 +221,7 @@ total = len(output_pair_2)
 for r in output_pair_2:
     #print(r)
     if abs(r[1]-r[0]) < 0.5:
-        correct_sum+=1
+        correct_sum += 1
 print("My accuracy", float(correct_sum)/total)
 
 print("Confusion matrix")
