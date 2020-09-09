@@ -35,19 +35,24 @@ def extract_example_fn(data_record):
         'image/filename': tf.io.FixedLenFeature([], tf.string),
         'image/height': tf.io.FixedLenFeature([], tf.int64),
         'image/width': tf.io.FixedLenFeature([], tf.int64),
-        'image/object/bbox/xmin': tf.io.FixedLenFeature([], tf.float32),
-        'image/object/bbox/xmax': tf.io.FixedLenFeature([], tf.float32),
-        'image/object/bbox/ymin': tf.io.FixedLenFeature([], tf.float32),
-        'image/object/class/text': tf.io.FixedLenFeature([], tf.string),
-        'image/object/class/label':  tf.io.FixedLenFeature([], tf.int64)
+        'image/object/bbox/xmin': tf.io.VarLenFeature(tf.float32),
+        'image/object/bbox/xmax': tf.io.VarLenFeature(tf.float32),
+        'image/object/bbox/ymin': tf.io.VarLenFeature(tf.float32),
+        'image/object/bbox/ymax': tf.io.VarLenFeature(tf.float32),
+        'image/object/class/text': tf.io.VarLenFeature(tf.string),
+        'image/object/class/label': tf.io.VarLenFeature(tf.int64)
     }
-            
     sample = tf.io.parse_single_example(data_record, features)
-    #image = tf.image.decode_image(sample['image/encoded'])        
-    #img_shape = tf.stack([sample['image/height'], sample['image/width'], 3])
-    #label = sample['image/object/class/label']
-    #filename = sample['image/filename']
-    return sample       
+    inputs_image = tf.image.decode_image(sample['image/encoded'])
+    filename = sample['image/filename'] 
+    image_shape = tf.stack([sample['image/height'], sample['image/width'], 3])
+    bboxes_xmin = sample['image/object/bbox/xmin']
+    bboxes_xmax = sample['image/object/bbox/xmax']
+    bboxes_ymin = sample['image/object/bbox/ymin']
+    bboxes_ymax = sample['image/object/bbox/ymax']
+    outputs_labels_text = sample['image/object/class/text']
+    outputs_labels = sample['image/object/class/label']
+    return sample
 
 def create_input_pipeline(ds, mode, batch_size):
 
@@ -100,8 +105,10 @@ def train():
 
     # create input pipelines
     ds_tr = create_input_pipeline(ds_tr, 'train', args.batch_size)
+    num_epoch_samples_va = int(ds_va.reduce(np.int64(0), lambda x, _: x + 1))
     ds_tr = ds_tr.repeat(args.num_epochs)
     ds_va = create_input_pipeline(ds_va, 'train', args.batch_size)
+    num_epoch_samples_tr = int(ds_tr.reduce(np.int64(0), lambda x, _: x + 1))
     ds_va = ds_va.repeat(args.num_epochs)
 
 
@@ -121,8 +128,7 @@ def train():
         learning_rate=args.learning_rate, momentum=0.9)
     model.compile(optimizer=optimizer,loss='categorical_crossentropy', metrics=[['accuracy'], ['accuracy', 'mse']])
     
-    num_epoch_samples_va = int(ds_va.reduce(np.int64(0), lambda x, _: x + 1))
-    num_epoch_samples_tr = int(ds_tr.reduce(np.int64(0), lambda x, _: x + 1))
+    
 
     model.fit(ds_tr, validation_data=ds_va, epochs=ars.num_epochs,
                 steps_per_epoch=num_epoch_samples_tr//args.batch_size,
