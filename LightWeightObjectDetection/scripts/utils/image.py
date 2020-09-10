@@ -27,12 +27,28 @@ def _float_list_feature(value):
 	return tf.train.Feature(float_list=tf.train.FloatList(value=value))
 
 
-def convert_png_to_tfRecords(mode, num_samples,  path_to_images, path_to_label_map, path_to_labels, path_to_tf_records):
+def convert_png_to_jpeg(path_to_image, remove_pngs: bool):
+	format_new_name = str(path_to_image)[0:-4] +'.jpg'
+
+	print(f"FORMATED NAME {format_new_name}")
+	image = Image.open(path_to_image)
+	image_rgb = image.convert('RGB')
+	image_rgb.save(format_new_name)
+
+	if remove_pngs:
+		os.remove(path_to_image)
+
+
+def convert_jpg_to_tfRecords(use_jpegs, mode, num_samples, path_to_images, path_to_label_map, path_to_labels, path_to_tf_records):
+	
 	# get list of image names
 	image_path = []
-
-	for img in path_to_images.glob("**/*.png"):
-		image_path.append(str(img))
+	if use_jpegs:
+		for img in path_to_images.glob("**/*.jpg"):
+			image_path.append(str(img))
+	else:
+		for img in path_to_images.glob("**/*.png"):
+			image_path.append(str(img))
 	
 	# start tf writer
 	writer = tf.io.TFRecordWriter(path_to_tf_records.as_posix())
@@ -41,10 +57,11 @@ def convert_png_to_tfRecords(mode, num_samples,  path_to_images, path_to_label_m
 		print(f'Prepare data: {image_path[item]}')
 		# Read image data in terms of bytes
 		with tf.io.gfile.GFile(image_path[item], 'rb') as fid:
-			png_bytes = fid.read()
-
-		png_io = io.BytesIO(png_bytes)
-		image = Image.open(png_io)
+			img_bytes = fid.read()
+		
+		
+		img_io = io.BytesIO(img_bytes)
+		image = Image.open(img_io)
 		width, height = image.size
 			
 		if mode=='train':
@@ -114,22 +131,22 @@ def convert_png_to_tfRecords(mode, num_samples,  path_to_images, path_to_label_m
 				ymins.append(float(parts[7]))
 				class_labels.append(label_dict[parts[0]])
 				
-				# create the tf example for image and associated labels
-				tf_example = tf.train.Example(features=tf.train.Features(
-					feature={
-						'image/encoded': _bytes_feature(png_bytes),
-						'image/filename': _bytes_feature(image_path[item].encode('utf-8')),
-						'image/height': _int64_feature(height),
-						'image/width': _int64_feature(width),
-						'image/object/bbox/xmin': _float_list_feature(xmins),
-						'image/object/bbox/xmax': _float_list_feature(xmaxs),
-						'image/object/bbox/ymin': _float_list_feature(ymins),
-						'image/object/bbox/ymax': _float_list_feature(ymaxs),
-						'image/object/class/text': _bytes_list_feature(class_types),
-						'image/object/class/label': _int64_list_feature(class_labels)
-						}))
-				writer.write(tf_example.SerializeToString())
-				
+			# create the tf example for image and associated labels
+			tf_example = tf.train.Example(features=tf.train.Features(
+				feature={
+					'image/encoded': _bytes_feature(img_bytes),
+					'image/filename': _bytes_feature(image_path[item].encode('utf-8')),
+					'image/height': _int64_feature(height),
+					'image/width': _int64_feature(width),
+					'image/object/bbox/xmin': _float_list_feature(xmins),
+					'image/object/bbox/xmax': _float_list_feature(xmaxs),
+					'image/object/bbox/ymin': _float_list_feature(ymins),
+					'image/object/bbox/ymax': _float_list_feature(ymaxs),
+					'image/object/class/text': _bytes_list_feature(class_types),
+					'image/object/class/label': _int64_list_feature(class_labels)
+					}))
+			writer.write(tf_example.SerializeToString())
+			
 		else:
 			# create the tf example for image and associated labels
 			tf_example = tf.train.Example(features=tf.train.Features(
